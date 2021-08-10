@@ -21,6 +21,8 @@ To my surprise, there was a single led inside. It is a very bright surface-mount
 
 Do note that the LED height is of top importance. Too high and it will not be defused anymore. Lower is better. Nothing is stopping you from being more creative and adding multiple LEDs.The effects would be crazy, but I opted for a more simple solution.
 
+![Alt text](images/circuit.svg?raw=true "Prototype1")
+
 ## LET THERE BE LIGHT
 
 The process involves 2 parts. The Arduino enables an external driver program to light up the LEDS via its serial port. 

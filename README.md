@@ -2,8 +2,6 @@
 Skylanders Power Portal upgraded with an Arduino inside.
 The result is a funky RGB light that may be controlled via the serial port.  
 
-This was a very simple project. 
-
 ![Alt text](images/pic1.jpg?raw=true "Prototype1")
 
 ![Alt text](images/pic2.jpg?raw=true "Prototype1")

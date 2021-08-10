@@ -1,190 +1,115 @@
-#include <Arduino.h>
-#include <SimpleTimer.h>>
+// (c) 2021 Etienne
+// This code is licensed under MIT license (see LICENSE.txt for details)
 
-const byte numChars = 32;
+#include <Arduino.h>
+#include <SimpleTimer.h>
+
+const byte numChars = 12; // max nr of chars expected.
+const char cmdStartIndicator = '<';
+const char cmdEndIndicator = '>';
+
 char receivedChars[numChars];
-char tempChars[numChars]; // temporary array for use when parsing
+char cmdToParse[numChars];
+boolean incommingData = false;
+byte incommingDataIndex = 0;
+
+int _r = 0; // red 0-255 value
+int _g = 0; // green 0-255 value
+int _b = 0; // blue 0-255 value
+
+int idleCounter = 0;
+boolean newCmdToParse = false;
 SimpleTimer timer;
 
-// variables to hold the parsed data
-char messageFromPC[numChars] = {0};
-int _r = 0;
-int _g = 0;
-int _b = 0;
-int _flash = 0;
-float floatFromPC = 0.0;
-bool tog = true;
-bool demo_mode = false;
-int counter = 0;
-
-boolean newData = false;
-
-String sdata = ""; // Initialised to nothing.
-byte test, start;
-
-void repeatMe(void)
+void ledSaver(void)
 {
-   if (!demo_mode)
+   idleCounter++;
+   //save that LED by turning it off after 1H of no activity.This might bite me later.
+   if (idleCounter > (60 * 60))
    {
-      counter++;
-   }
-
-   if (counter > (60 * 60))
-   {
-      demo_mode = true;
-      counter = 0;
+      _r = 0;
+      _g = 0;
+      _b = 0;
+      idleCounter = 0;
    }
 }
+
 void setup(void)
 {
    Serial.begin(345600);
-   Serial.println("Enter data in this style <255, 12, 50,5000>,<red,green,blue,flash>");
+   Serial.println("Send data in this format <255, 12, 50>");
    pinMode(9, OUTPUT);
    pinMode(10, OUTPUT);
    pinMode(11, OUTPUT);
-   //timer.setInterval(1000, repeatMe);
+   timer.setInterval(1000, ledSaver);
 }
 
-void recvWithStartEndMarkers()
+void getNewCommand()
 {
-   static boolean recvInProgress = false;
-   static byte ndx = 0;
-   char startMarker = '<';
-   char endMarker = '>';
-   char rc;
+   char currentChar;
 
-   while (Serial.available() > 0 && newData == false)
+   while (Serial.available() > 0 && !newCmdToParse)
    {
-
-      rc = Serial.read();
-      if (recvInProgress == true)
+      currentChar = Serial.read();
+      if (incommingData)
       {
-         if (rc != endMarker)
+         if (currentChar != cmdEndIndicator)
          {
-            receivedChars[ndx] = rc;
-            ndx++;
-            if (ndx >= numChars)
+            receivedChars[incommingDataIndex] = currentChar;
+            incommingDataIndex++;
+            if (incommingDataIndex >= numChars)
             {
-               ndx = numChars - 1;
+               incommingDataIndex = numChars - 1;
             }
          }
          else
          {
-            receivedChars[ndx] = '\0'; // terminate the string
-            recvInProgress = false;
-            ndx = 0;
-            newData = true;
+            receivedChars[incommingDataIndex] = '\0'; // terminate the string
+            incommingData = false;
+            incommingDataIndex = 0;
+            newCmdToParse = true;
          }
       }
 
-      else if (rc == startMarker)
+      else if (currentChar == cmdStartIndicator)
       {
-         recvInProgress = true;
+         incommingData = true;
       }
    }
 }
 
-//============
-
+//
+// Splits the incomming serial data into RGB segments.
+// It is expected to arive as <255,255,255>
+//
 void parseData()
-{ // split the data into its parts
+{
+   char *strtokIndx;
 
-   char *strtokIndx; // this is used by strtok() as an index
+   strtokIndx = strtok(cmdToParse, ","); // get the 1st part - RED (0-255)
+   _r = atoi(strtokIndx);
 
-   strtokIndx = strtok(tempChars, ","); // get the first part - the string
-   _r = atoi(strtokIndx);               // copy it to messageFromPC
+   strtokIndx = strtok(NULL, ","); // get the 2'd part - GREEN (0-255)
+   _g = atoi(strtokIndx);
 
-   strtokIndx = strtok(NULL, ","); // this continues where the previous call left off
-   _g = atoi(strtokIndx);          // convert this part to an integer
-
-   strtokIndx = strtok(NULL, ",");
-   _b = atoi(strtokIndx) / 5.1; // my blue leds broken.
-
-   strtokIndx = strtok(NULL, ",");
-
-   if (strtokIndx != NULL)
-   {
-      _flash = atoi(strtokIndx);
-   }
+   strtokIndx = strtok(NULL, ","); // get the 3rd part - BLUE (0-255)
+   _b = atoi(strtokIndx) / 5.1;    // my blue leds broken, sorz
 }
-// void demo()
-// {
-//    if (demo_mode)
-//    {
-//       for (int i = 0; i < 150; i++)
-//       {
-//          analogWrite(9, i);
-//          delay(2);
-//       }
-//    }
-//    if (demo_mode)
-//    {
-//       delay(5000);
-//       for (int i = 0; i < 50; i++)
-//       {
-//          analogWrite(11, i);
-//          delay(30);
-//       }
-//    }
-//    if (demo_mode)
-//    {
-//       delay(5000);
-//       for (int i = 0; i < 150; i++)
-//       {
-//          analogWrite(10, i);
-//          delay(2);
-//       }
-//    }
-//    if (demo_mode)
-//    {
-//       delay(5000);
-//       for (int i = 50; i > 0; i--)
-//       {
-//          analogWrite(11, i);
-//          delay(20);
-//       }
-//    }
-//    if (demo_mode)
-//    {
-//       delay(5000);
-//       for (int i = 150; i > 0; i--)
-//       {
-//          analogWrite(9, i);
-//          delay(2);
-//       }
-//    }
-//    if (demo_mode)
-//    {
-//       delay(5000);
-
-//       for (int i = 150; i > 0; i--)
-//       {
-//          analogWrite(10, i);
-//          delay(2);
-//       }
-//    }
-// }
 
 void loop(void)
 {
    timer.run();
-   recvWithStartEndMarkers();
-   if (newData == true)
+   getNewCommand();
+   if (newCmdToParse)
    {
-      strcpy(tempChars, receivedChars);
+      strcpy(cmdToParse, receivedChars);
       parseData();
-      newData = false;
-      counter = 0;
-      demo_mode = false;
-   }else{
-   
-   
+      newCmdToParse = false;
+      
       analogWrite(9, _r);
       analogWrite(10, _g);
       analogWrite(11, _b);
-   
+
+      idleCounter = 0;
    }
-   
-   //analogWrite(10, 23);
-   //analogWrite(11, 255);
 }
